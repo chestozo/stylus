@@ -1,6 +1,7 @@
 ;(function($) {
 
-var reImport = /^\s*@import\s*(.*)\s*$/gi;
+var reImport = /^@import (.*)$/;
+
 var $head = $('head');
 
 // ----------------------------------------------------------------------------------------------------------------- //
@@ -12,17 +13,23 @@ var $head = $('head');
  */
 var FileLoader = function(url, path) {
     this.url = path + url;
+    this.path = path;
 };
 
 FileLoader.prototype.startLoading = function() {
-    var promise = new $.Deferred();
+    var that = this;
+    var promise = this.promise = new $.Deferred();
 
     $.ajax({
         url: this.url,
         type: 'GET',
         dataType: 'text',
         success: function(file_contents) {
-            promise.resolve(file_contents);
+            var l = new Loader(file_contents, that.path);
+            var loader_promise = l.load();
+            loader_promise.done(function(full_contents) {
+                promise.resolve(full_contents);
+            });
         }
     });
 
@@ -33,13 +40,13 @@ FileLoader.prototype.startLoading = function() {
 
 // One level loader.
 // It will create more loaders for inner imports.
-var Loader = function(raw_stylus_code, url, path) {
+var Loader = function(raw_stylus_code, path) {
     this.raw = raw_stylus_code;
-    this.url = url;
     this.path = path;
 
     this.parts = []; // ready strings and more loaders where import was found
     this.done_promise = new $.Deferred();
+    this.wait_count = 0;
 };
 
 Loader.prototype.load = function() {
@@ -56,10 +63,17 @@ Loader.prototype.load = function() {
 
         } else { // @import is here
 
+            this.wait_count++;
+
             // Replace file loader with loaded file content.
             (function(part_index, loaded_promise) {
-                $.when(loaded_promise).then(function(file_contents) {
+                loaded_promise.done(function(file_contents) {
                     that.parts[part_index] = file_contents;
+                    that.wait_count--;
+
+                    if (that.wait_count === 0) {
+                        that.onDone();
+                    }
                 });
             } (i, p.promise));
 
@@ -68,22 +82,26 @@ Loader.prototype.load = function() {
         }
     }
 
-    // After all files loaded - join all files content and resolve master promise.
-    $.when(wait).done(function() {
-        that.done_promise.resolve(that.parts.join('\n'));
-    });
+    if (this.wait_count === 0) {
+        this.onDone();
+    }
 
     return this.done_promise; // Return master promise.
+};
+
+Loader.prototype.onDone = function() {
+    this.done_promise.resolve(this.parts.join('\n'));
 };
 
 Loader.prototype.splitByImport = function() {
     var rows = this.raw.split('\n');
     var buf = [];
-    var r, joined;
+    var r, joined, m, fl;
 
     for (var i = 0; i < rows.length; i++) {
         r = rows[i];
-        if (reImport.test(r)) {
+        m = r.match(reImport);
+        if (!!m) {
             joined = buf.join('\n');
             buf = [];
             if (joined.length > 0) {
@@ -91,9 +109,10 @@ Loader.prototype.splitByImport = function() {
             }
 
             // Create another loader for import.
-            // TODO get url
-            this.parts.push(new FileLoader('', this.path));
+            fl = new FileLoader(m[1], this.path);
+            fl.startLoading();
 
+            this.parts.push(fl);
         } else {
             buf.push(r);
         }
@@ -116,25 +135,20 @@ var loadStyles = function() {
 
         var fl = new FileLoader(file, path);
         fl.startLoading()
-            .done(function(file_contents) {
+            .done(function(full_contents) {
 
-                var l = new Loader(file_contents);
-                l.load().done(function(full_contents) {
+                // Get css from stylus code.
+                stylus(full_contents).render(function(err, css) {
+                    if (err) {
+                        alert(arr);
+                        return;
+                    }
 
-                    // Get css from stylus code.
-                    stylus(full_contents).render(function(err, css) {
-                        if (err) {
-                            alert(arr);
-                            return;
-                        }
-
-                        // Create style element.
-                        var $style = $('<style type="text/css"></style>');
-                        $style
-                            .html(css.trim())
-                            .appendTo($head);
-                    });
-
+                    // Create style element.
+                    var $style = $('<style type="text/css"></style>');
+                    $style
+                        .html(css.trim())
+                        .appendTo($head);
                 });
 
             });
