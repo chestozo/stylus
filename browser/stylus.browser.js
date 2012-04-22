@@ -7273,194 +7273,6 @@ Parser.prototype = {
 });// module: parser.js
 
 
-require.register("renderer.js", function(module, exports, require){
-
-
-/*!
- * Stylus - Renderer
- * Copyright(c) 2010 LearnBoost <dev@learnboost.com>
- * MIT Licensed
- */
-
-/**
- * Module dependencies.
- */
-
-var Parser = require('./parser')
-  , EventEmitter = require('events').EventEmitter
-  , Compiler = require('./visitor/compiler')
-  , Evaluator = require('./visitor/evaluator')
-  , Normalizer = require('./visitor/normalizer')
-  , utils = require('./utils')
-  , nodes = require('./nodes')
-  , path = require('path')
-  , join = path.join;
-
-/**
- * Expose `Renderer`.
- */
-
-module.exports = Renderer;
-
-/**
- * Initialize a new `Renderer` with the given `str` and `options`.
- *
- * @param {String} str
- * @param {Object} options
- * @api public
- */
-
-function Renderer(str, options) {
-  options = options || {};
-  options.globals = {};
-  options.functions = {};
-  options.imports = [join(__dirname, 'functions')];
-  options.paths = options.paths || [];
-  options.filename = options.filename || 'stylus';
-  this.options = options;
-  this.str = str;
-};
-
-/**
- * Inherit from `EventEmitter.prototype`.
- */
-
-Renderer.prototype.__proto__ = EventEmitter.prototype;
-
-/**
- * Parse and evaluate AST, then callback `fn(err, css, js)`.
- *
- * @param {Function} fn
- * @api public
- */
-
-Renderer.prototype.render = function(fn){
-  var parser = this.parser = new Parser(this.str, this.options);
-  try {
-    nodes.filename = this.options.filename;
-    // parse
-    var ast = parser.parse();
-
-    // evaluate
-    this.evaluator = new Evaluator(ast, this.options);
-    ast = this.evaluator.evaluate();
-
-    // normalize
-    var normalizer = new Normalizer(ast, this.options);
-    ast = normalizer.normalize();
-
-    // compile
-    var compiler = new Compiler(ast, this.options)
-      , css = compiler.compile();
-
-    this.emit('end', css);
-    fn(null, css);
-  } catch (err) {
-    var options = {};
-    options.input = err.input || this.str;
-    options.filename = err.filename || this.options.filename;
-    options.lineno = err.lineno || parser.lexer.lineno;
-    fn(utils.formatException(err, options));
-  }
-};
-
-/**
- * Set option `key` to `val`.
- *
- * @param {String} key
- * @param {Mixed} val
- * @return {Renderer} for chaining
- * @api public
- */
-
-Renderer.prototype.set = function(key, val){
-  this.options[key] = val;
-  return this;
-};
-
-/**
- * Get option `key`.
- *
- * @param {String} key
- * @return {Mixed} val
- * @api public
- */
-
-Renderer.prototype.get = function(key){
-  return this.options[key];
-};
-
-/**
- * Include the given `path` to the lookup paths array.
- *
- * @param {String} path
- * @return {Renderer} for chaining
- * @api public
- */
-
-Renderer.prototype.include = function(path){
-  this.options.paths.push(path);
-  return this;
-};
-
-/**
- * Use the given `fn`.
- *
- * This allows for plugins to alter the renderer in
- * any way they wish, exposing paths etc.
- *
- * @param {Function}
- * @return {Renderer} for chaining
- * @api public
- */
-
-Renderer.prototype.use = function(fn){
-  fn.call(this, this);
-  return this;
-};
-
-/**
- * Define function or global var with the given `name`. Optionally
- * the function may accept full expressions, by setting `raw`
- * to `true`.
- *
- * @param {String} name
- * @param {Function|Node} fn
- * @return {Renderer} for chaining
- * @api public
- */
-
-Renderer.prototype.define = function(name, fn, raw){
-  fn = utils.coerce(fn);
-
-  if (fn.nodeName) {
-    this.options.globals[name] = fn;
-    return this;
-  }
-
-  // function
-  this.options.functions[name] = fn;
-  if (undefined != raw) fn.raw = raw;
-  return this;
-};
-
-/**
- * Import the given `file`.
- *
- * @param {String} file
- * @return {Renderer} for chaining
- * @api public
- */
-
-Renderer.prototype.import = function(file){
-  this.options.imports.push(file);
-  return this;
-};
-
-
-});// module: renderer.js
-
-
 require.register("stack/index.js", function(module, exports, require){
 
 
@@ -7874,115 +7686,6 @@ Converter.prototype.visitStyle = function(node){
 };});// module: convert/css.js
 
 
-require.register("stylus.js", function(module, exports, require){
-
-
-/*!
- * Stylus
- * Copyright(c) 2010 LearnBoost <dev@learnboost.com>
- * MIT Licensed
- */
-
-/**
- * Module dependencies.
- */
-
-var Renderer = require('./renderer')
-  , Parser = require('./parser')
-  , nodes = require('./nodes')
-  , utils = require('./utils');
-
-/**
- * Export render as the module.
- */
-
-exports = module.exports = render;
-
-/**
- * Library version.
- */
-
-exports.version = '0.25.0';
-
-/**
- * Expose nodes.
- */
-
-exports.nodes = nodes;
-
-/**
- * Expose BIFs.
- */
-
-exports.functions = require('./functions');
-
-/**
- * Expose utils.
- */
-
-exports.utils = require('./utils');
-
-/**
- * Expose middleware.
- */
-
-exports.middleware = require('./middleware');
-
-/**
- * Expose constructors.
- */
-
-exports.Visitor = require('./visitor');
-exports.Parser = require('./parser');
-exports.Evaluator = require('./visitor/evaluator');
-exports.Compiler = require('./visitor/compiler');
-
-/**
- * Convert the given `css` to `stylus` source.
- *
- * @param {String} css
- * @return {String}
- * @api public
- */
-
-exports.convertCSS = require('./convert/css');
-
-/**
- * Render the given `str` with `options` and callback `fn(err, css)`.
- *
- * @param {String} str
- * @param {Object|Function} options
- * @param {Function} fn
- * @api public
- */
-
-exports.render = function(str, options, fn){
-  if ('function' == typeof options) fn = options, options = {};
-  new Renderer(str, options).render(fn);
-};
-
-/**
- * Return a new `Renderer` for the given `str` and `options`.
- *
- * @param {String} str
- * @param {Object} options
- * @return {Renderer}
- * @api public
- */
-
-function render(str, options) {
-    str = bifs + str;
-  return new Renderer(str, options);
-}
-
-/**
- * Expose optional functions.
- */
-
-exports.url = require('./functions/url');
-});// module: stylus.js
-
-
 require.register("token.js", function(module, exports, require){
 
 
@@ -8383,502 +8086,6 @@ Visitor.prototype.visit = function(node, fn){
 };
 
 });// module: visitor/index.js
-
-
-require.register("visitor/compiler.js", function(module, exports, require){
-
-/*!
- * Stylus - Compiler
- * Copyright(c) 2010 LearnBoost <dev@learnboost.com>
- * MIT Licensed
- */
-
-/**
- * Module dependencies.
- */
-
-var Visitor = require('./')
-  , nodes = require('../nodes')
-  , utils = require('../utils')
-  , fs = require('fs');
-
-/**
- * Initialize a new `Compiler` with the given `root` Node
- * and the following `options`.
- *
- * Options:
- *
- *   - `compress`  Compress the css output, defaults to false
- *
- * @param {Node} root
- * @api public
- */
-
-var Compiler = module.exports = function Compiler(root, options) {
-  options = options || {};
-  this.compress = options.compress;
-  this.firebug = options.firebug;
-  this.linenos = options.linenos;
-  this.spaces = options['indent spaces'] || 2;
-  this.indents = 1;
-  Visitor.call(this, root);
-  this.stack = [];
-  this.js = '';
-};
-
-/**
- * Inherit from `Visitor.prototype`.
- */
-
-Compiler.prototype.__proto__ = Visitor.prototype;
-
-/**
- * Compile to css, and return a string of CSS.
- *
- * @return {String}
- * @api private
- */
-
-Compiler.prototype.compile = function(){
-  return this.visit(this.root);
-};
-
-/**
- * Return indentation string.
- *
- * @return {String}
- * @api private
- */
-
-Compiler.prototype.__defineGetter__('indent', function(){
-  if (this.compress) return '';
-  return new Array(this.indents).join(Array(this.spaces + 1).join(' '));
-});
-
-/**
- * Visit Root.
- */
-
-Compiler.prototype.visitRoot = function(block){
-  this.buf = '';
-  for (var i = 0, len = block.nodes.length; i < len; ++i) {
-    var node = block.nodes[i];
-    if (this.linenos || this.firebug) this.debugInfo(node);
-    var ret = this.visit(node);
-    if (ret) this.buf += ret + '\n';
-  }
-  return this.buf;
-};
-
-/**
- * Visit Block.
- */
-
-Compiler.prototype.visitBlock = function(block){
-  var node;
-
-  if (block.hasProperties) {
-    var arr = [this.compress ? '{' : ' {'];
-    ++this.indents;
-    for (var i = 0, len = block.nodes.length; i < len; ++i) {
-      this.last = len - 1 == i;
-      node = block.nodes[i];
-      switch (node.nodeName) {
-        case 'null':
-        case 'expression':
-        case 'function':
-        case 'jsliteral':
-        case 'group':
-        case 'unit':
-          continue;
-        case 'media':
-          // Prevent double-writing the @media declaration when
-          // nested inside of a function/mixin
-          if (node.block.parent.scope) {
-            continue;
-          }
-        default:
-          arr.push(this.visit(node));
-      }
-    }
-    --this.indents;
-    arr.push(this.indent + '}');
-    this.buf += arr.join(this.compress ? '' : '\n');
-    this.buf += '\n';
-  }
-
-  // Nesting
-  for (var i = 0, len = block.nodes.length; i < len; ++i) {
-    node = block.nodes[i];
-    switch (node.nodeName) {
-      case 'group':
-      case 'print':
-      case 'page':
-      case 'block':
-      case 'keyframes':
-        if (this.linenos || this.firebug) this.debugInfo(node);
-        this.visit(node);
-        break;
-      case 'media':
-      case 'import':
-      case 'fontface':
-        this.visit(node);
-        break;
-    }
-  }
-};
-
-/**
- * Visit Keyframes.
- */
-
-Compiler.prototype.visitKeyframes = function(node){
-  var comma = this.compress ? ',' : ', ';
-
-  var prefix = 'official' == node.prefix
-    ? ''
-    : '-' + node.prefix + '-';
-
-  this.buf += '@' + prefix + 'keyframes '
-    + this.visit(node.name)
-    + (this.compress ? '{' : ' {');
-
-  ++this.indents;
-  node.frames.forEach(function(frame){
-    if (!this.compress) this.buf += '\n  ';
-    this.buf += this.visit(frame.pos.join(comma));
-    this.visit(frame.block);
-  }, this);
-  --this.indents;
-
-  this.buf += '}' + (this.compress ? '' : '\n');
-};
-
-/**
- * Visit Media.
- */
-
-Compiler.prototype.visitMedia = function(media){
-  this.buf += '@media ' + media.val;
-  this.buf += this.compress ? '{' : ' {\n';
-  ++this.indents;
-  this.visit(media.block);
-  --this.indents;
-  this.buf += '}' + (this.compress ? '' : '\n');
-};
-
-/**
- * Visit Page.
- */
-
-Compiler.prototype.visitPage = function(page){
-  this.buf += this.indent + '@page';
-  this.buf += page.selector ? ' ' + page.selector : '';
-  this.visit(page.block);
-};
-
-/**
- * Visit Import.
- */
-
-Compiler.prototype.visitImport = function(imported){
-  this.buf += '@import ' + this.visit(imported.path) + ';\n';
-};
-
-/**
- * Visit FontFace.
- */
-
-Compiler.prototype.visitFontFace = function(face){
-  this.buf += this.indent + '@font-face';
-  this.visit(face.block);
-};
-
-/**
- * Visit JSLiteral.
- */
-
-Compiler.prototype.visitJSLiteral = function(js){
-  this.js += '\n' + js.val.replace(/@selector/g, '"' + this.selector + '"');
-  return '';
-};
-
-/**
- * Visit Comment.
- */
-
-Compiler.prototype.visitComment = function(comment){
-  return this.compress
-    ? comment.suppress
-      ? ''
-      : comment.str
-    : comment.str;
-};
-
-/**
- * Visit Function.
- */
-
-Compiler.prototype.visitFunction = function(fn){
-  return fn.name;
-};
-
-/**
- * Visit Variable.
- */
-
-Compiler.prototype.visitVariable = function(variable){
-  return '';
-};
-
-/**
- * Visit Charset.
- */
-
-Compiler.prototype.visitCharset = function(charset){
-  return '@charset ' + this.visit(charset.val) + ';';
-};
-
-/**
- * Visit Literal.
- */
-
-Compiler.prototype.visitLiteral = function(lit){
-  return lit.val.trim().replace(/^  /gm, '');
-};
-
-/**
- * Visit Boolean.
- */
-
-Compiler.prototype.visitBoolean = function(bool){
-  return bool.toString();
-};
-
-/**
- * Visit RGBA.
- */
-
-Compiler.prototype.visitRGBA = function(rgba){
-  return rgba.toString();
-};
-
-/**
- * Visit HSLA.
- */
-
-Compiler.prototype.visitHSLA = function(hsla){
-  return hsla.rgba.toString();
-};
-
-/**
- * Visit Unit.
- */
-
-Compiler.prototype.visitUnit = function(unit){
-  var type = unit.type || ''
-    , n = unit.val
-    , float = n != (n | 0);
-
-  // Compress
-  if (this.compress) {
-    // Zero is always '0', unless when
-    // a percentage, this is required by keyframes
-    if ('%' != type && 0 == n) return '0';
-    // Omit leading '0' on floats
-    if (float && n < 1 && n > -1) {
-      return n.toString().replace('0.', '.') + type;
-    }
-  }
-
-  return n.toString() + type;
-};
-
-/**
- * Visit Group.
- */
-
-Compiler.prototype.visitGroup = function(group){
-  var stack = this.stack;
-
-  stack.push(group.nodes);
-
-  // selectors
-  if (group.block.hasProperties) {
-    var selectors = this.compileSelectors(stack);
-    this.buf += (this.selector = selectors.join(this.compress ? ',' : ',\n'));
-  }
-
-  // output block
-  this.visit(group.block);
-  stack.pop();
-};
-
-/**
- * Visit Ident.
- */
-
-Compiler.prototype.visitIdent = function(ident){
-  return ident.name;
-};
-
-/**
- * Visit String.
- */
-
-Compiler.prototype.visitString = function(string){
-  return this.isURL
-    ? string.val
-    : string.toString();
-};
-
-/**
- * Visit Null.
- */
-
-Compiler.prototype.visitNull = function(node){
-  return '';
-};
-
-/**
- * Visit Call.
- */
-
-Compiler.prototype.visitCall = function(call){
-  this.isURL = 'url' == call.name;
-  var args = call.args.nodes.map(function(arg){
-    return this.visit(arg);
-  }, this).join(this.compress ? ',' : ', ');
-  if (this.isURL) args = '"' + args + '"';
-  delete this.isURL;
-  return call.name + '(' + args + ')';
-};
-
-/**
- * Visit Expression.
- */
-
-Compiler.prototype.visitExpression = function(expr){
-  var buf = []
-    , self = this
-    , len = expr.nodes.length
-    , nodes = expr.nodes.map(function(node){ return self.visit(node); });
-
-  nodes.forEach(function(node, i){
-    var last = i == len - 1;
-    buf.push(node);
-    if ('/' == nodes[i + 1] || '/' == node) return;
-    if (last) return;
-    buf.push(expr.isList
-      ? (self.compress ? ',' : ', ')
-      : (self.isURL ? '' : ' '));
-  });
-
-  return buf.join('');
-};
-
-/**
- * Visit Arguments.
- */
-
-Compiler.prototype.visitArguments = Compiler.prototype.visitExpression;
-
-/**
- * Visit Property.
- */
-
-Compiler.prototype.visitProperty = function(prop){
-  var self = this
-    , val = this.visit(prop.expr).trim();
-  return this.indent + (prop.name || prop.segments.join(''))
-    + (this.compress ? ':' + val : ': ' + val)
-    + (this.compress
-        ? (this.last ? '' : ';')
-        : ';');
-};
-
-/**
- * Compile selector strings in `arr` from the bottom-up
- * to produce the selector combinations. For example
- * the following Stylus:
- *
- *    ul
- *      li
- *      p
- *        a
- *          color: red
- *
- * Would return:
- *
- *      [ 'ul li a', 'ul p a' ]
- *
- * @param {Array} arr
- * @return {Array}
- * @api private
- */
-
-Compiler.prototype.compileSelectors = function(arr){
-  var stack = this.stack
-    , self = this
-    , selectors = []
-    , buf = [];
-
-  function compile(arr, i) {
-    if (i) {
-      arr[i].forEach(function(selector){
-        if (selector.inherits) {
-          buf.unshift(selector.val);
-          compile(arr, i - 1);
-          buf.shift();
-        } else {
-          selectors.push(selector.val);
-        }
-      });
-    } else {
-      arr[0].forEach(function(selector){
-        var str = selector.val.trim();
-        if (buf.length) {
-          for (var i = 0, len = buf.length; i < len; ++i) {
-            if (~buf[i].indexOf('&')) {
-              str = buf[i].replace(/&/g, str).trim();
-            } else {
-              str += ' ' + buf[i].trim();
-            }
-          }
-        }
-        selectors.push(self.indent + str.trimRight());
-      });
-    }
-  }
-
-  compile(arr, arr.length - 1);
-
-  return selectors;
-};
-
-/**
- * Debug info.
- */
-
-Compiler.prototype.debugInfo = function(node){
-
-  var path = fs.realpathSync(node.filename)
-    , line = node.nodes ? node.nodes[0].lineno : node.lineno;
-
-  if (this.linenos){
-    this.buf += '\n/* ' + 'line ' + line + ' : ' + path + ' */\n';
-  }
-
-  if (this.firebug){
-    // debug info for firebug, the crazy formatting is needed
-    path = 'file\\\:\\\/\\\/' + path.replace(/(\/|\.)/g, '\\$1');
-    line = '\\00003' + line;
-    this.buf += '\n@media -stylus-debug-info'
-      + '{filename{font-family:' + path
-      + '}line{font-family:' + line + '}}\n';
-  }
-}
-});// module: visitor/compiler.js
 
 
 require.register("visitor/evaluator.js", function(module, exports, require){
@@ -10064,6 +9271,842 @@ Evaluator.prototype.__defineGetter__('currentFrame', function(){
   return this.stack.currentFrame;
 });
 });// module: visitor/evaluator.js
+
+
+require.register("visitor/compiler.js", function(module, exports, require){
+
+/*!
+ * Stylus - Compiler
+ * Copyright(c) 2010 LearnBoost <dev@learnboost.com>
+ * MIT Licensed
+ */
+
+/**
+ * Module dependencies.
+ */
+
+var Visitor = require('./')
+  , nodes = require('../nodes')
+  , utils = require('../utils')
+  , fs = require('fs');
+
+/**
+ * Initialize a new `Compiler` with the given `root` Node
+ * and the following `options`.
+ *
+ * Options:
+ *
+ *   - `compress`  Compress the css output, defaults to false
+ *
+ * @param {Node} root
+ * @api public
+ */
+
+var Compiler = module.exports = function Compiler(root, options) {
+  options = options || {};
+  this.compress = options.compress;
+  this.firebug = options.firebug;
+  this.linenos = options.linenos;
+  this.spaces = options['indent spaces'] || 2;
+  this.indents = 1;
+  Visitor.call(this, root);
+  this.stack = [];
+  this.js = '';
+};
+
+/**
+ * Inherit from `Visitor.prototype`.
+ */
+
+Compiler.prototype.__proto__ = Visitor.prototype;
+
+/**
+ * Compile to css, and return a string of CSS.
+ *
+ * @return {String}
+ * @api private
+ */
+
+Compiler.prototype.compile = function(){
+  return this.visit(this.root);
+};
+
+/**
+ * Return indentation string.
+ *
+ * @return {String}
+ * @api private
+ */
+
+Compiler.prototype.__defineGetter__('indent', function(){
+  if (this.compress) return '';
+  return new Array(this.indents).join(Array(this.spaces + 1).join(' '));
+});
+
+/**
+ * Visit Root.
+ */
+
+Compiler.prototype.visitRoot = function(block){
+  this.buf = '';
+  for (var i = 0, len = block.nodes.length; i < len; ++i) {
+    var node = block.nodes[i];
+    if (this.linenos || this.firebug) this.debugInfo(node);
+    var ret = this.visit(node);
+    if (ret) this.buf += ret + '\n';
+  }
+  return this.buf;
+};
+
+/**
+ * Visit Block.
+ */
+
+Compiler.prototype.visitBlock = function(block){
+  var node;
+
+  if (block.hasProperties) {
+    var arr = [this.compress ? '{' : ' {'];
+    ++this.indents;
+    for (var i = 0, len = block.nodes.length; i < len; ++i) {
+      this.last = len - 1 == i;
+      node = block.nodes[i];
+      switch (node.nodeName) {
+        case 'null':
+        case 'expression':
+        case 'function':
+        case 'jsliteral':
+        case 'group':
+        case 'unit':
+          continue;
+        case 'media':
+          // Prevent double-writing the @media declaration when
+          // nested inside of a function/mixin
+          if (node.block.parent.scope) {
+            continue;
+          }
+        default:
+          arr.push(this.visit(node));
+      }
+    }
+    --this.indents;
+    arr.push(this.indent + '}');
+    this.buf += arr.join(this.compress ? '' : '\n');
+    this.buf += '\n';
+  }
+
+  // Nesting
+  for (var i = 0, len = block.nodes.length; i < len; ++i) {
+    node = block.nodes[i];
+    switch (node.nodeName) {
+      case 'group':
+      case 'print':
+      case 'page':
+      case 'block':
+      case 'keyframes':
+        if (this.linenos || this.firebug) this.debugInfo(node);
+        this.visit(node);
+        break;
+      case 'media':
+      case 'import':
+      case 'fontface':
+        this.visit(node);
+        break;
+    }
+  }
+};
+
+/**
+ * Visit Keyframes.
+ */
+
+Compiler.prototype.visitKeyframes = function(node){
+  var comma = this.compress ? ',' : ', ';
+
+  var prefix = 'official' == node.prefix
+    ? ''
+    : '-' + node.prefix + '-';
+
+  this.buf += '@' + prefix + 'keyframes '
+    + this.visit(node.name)
+    + (this.compress ? '{' : ' {');
+
+  ++this.indents;
+  node.frames.forEach(function(frame){
+    if (!this.compress) this.buf += '\n  ';
+    this.buf += this.visit(frame.pos.join(comma));
+    this.visit(frame.block);
+  }, this);
+  --this.indents;
+
+  this.buf += '}' + (this.compress ? '' : '\n');
+};
+
+/**
+ * Visit Media.
+ */
+
+Compiler.prototype.visitMedia = function(media){
+  this.buf += '@media ' + media.val;
+  this.buf += this.compress ? '{' : ' {\n';
+  ++this.indents;
+  this.visit(media.block);
+  --this.indents;
+  this.buf += '}' + (this.compress ? '' : '\n');
+};
+
+/**
+ * Visit Page.
+ */
+
+Compiler.prototype.visitPage = function(page){
+  this.buf += this.indent + '@page';
+  this.buf += page.selector ? ' ' + page.selector : '';
+  this.visit(page.block);
+};
+
+/**
+ * Visit Import.
+ */
+
+Compiler.prototype.visitImport = function(imported){
+  this.buf += '@import ' + this.visit(imported.path) + ';\n';
+};
+
+/**
+ * Visit FontFace.
+ */
+
+Compiler.prototype.visitFontFace = function(face){
+  this.buf += this.indent + '@font-face';
+  this.visit(face.block);
+};
+
+/**
+ * Visit JSLiteral.
+ */
+
+Compiler.prototype.visitJSLiteral = function(js){
+  this.js += '\n' + js.val.replace(/@selector/g, '"' + this.selector + '"');
+  return '';
+};
+
+/**
+ * Visit Comment.
+ */
+
+Compiler.prototype.visitComment = function(comment){
+  return this.compress
+    ? comment.suppress
+      ? ''
+      : comment.str
+    : comment.str;
+};
+
+/**
+ * Visit Function.
+ */
+
+Compiler.prototype.visitFunction = function(fn){
+  return fn.name;
+};
+
+/**
+ * Visit Variable.
+ */
+
+Compiler.prototype.visitVariable = function(variable){
+  return '';
+};
+
+/**
+ * Visit Charset.
+ */
+
+Compiler.prototype.visitCharset = function(charset){
+  return '@charset ' + this.visit(charset.val) + ';';
+};
+
+/**
+ * Visit Literal.
+ */
+
+Compiler.prototype.visitLiteral = function(lit){
+  return lit.val.trim().replace(/^  /gm, '');
+};
+
+/**
+ * Visit Boolean.
+ */
+
+Compiler.prototype.visitBoolean = function(bool){
+  return bool.toString();
+};
+
+/**
+ * Visit RGBA.
+ */
+
+Compiler.prototype.visitRGBA = function(rgba){
+  return rgba.toString();
+};
+
+/**
+ * Visit HSLA.
+ */
+
+Compiler.prototype.visitHSLA = function(hsla){
+  return hsla.rgba.toString();
+};
+
+/**
+ * Visit Unit.
+ */
+
+Compiler.prototype.visitUnit = function(unit){
+  var type = unit.type || ''
+    , n = unit.val
+    , float = n != (n | 0);
+
+  // Compress
+  if (this.compress) {
+    // Zero is always '0', unless when
+    // a percentage, this is required by keyframes
+    if ('%' != type && 0 == n) return '0';
+    // Omit leading '0' on floats
+    if (float && n < 1 && n > -1) {
+      return n.toString().replace('0.', '.') + type;
+    }
+  }
+
+  return n.toString() + type;
+};
+
+/**
+ * Visit Group.
+ */
+
+Compiler.prototype.visitGroup = function(group){
+  var stack = this.stack;
+
+  stack.push(group.nodes);
+
+  // selectors
+  if (group.block.hasProperties) {
+    var selectors = this.compileSelectors(stack);
+    this.buf += (this.selector = selectors.join(this.compress ? ',' : ',\n'));
+  }
+
+  // output block
+  this.visit(group.block);
+  stack.pop();
+};
+
+/**
+ * Visit Ident.
+ */
+
+Compiler.prototype.visitIdent = function(ident){
+  return ident.name;
+};
+
+/**
+ * Visit String.
+ */
+
+Compiler.prototype.visitString = function(string){
+  return this.isURL
+    ? string.val
+    : string.toString();
+};
+
+/**
+ * Visit Null.
+ */
+
+Compiler.prototype.visitNull = function(node){
+  return '';
+};
+
+/**
+ * Visit Call.
+ */
+
+Compiler.prototype.visitCall = function(call){
+  this.isURL = 'url' == call.name;
+  var args = call.args.nodes.map(function(arg){
+    return this.visit(arg);
+  }, this).join(this.compress ? ',' : ', ');
+  if (this.isURL) args = '"' + args + '"';
+  delete this.isURL;
+  return call.name + '(' + args + ')';
+};
+
+/**
+ * Visit Expression.
+ */
+
+Compiler.prototype.visitExpression = function(expr){
+  var buf = []
+    , self = this
+    , len = expr.nodes.length
+    , nodes = expr.nodes.map(function(node){ return self.visit(node); });
+
+  nodes.forEach(function(node, i){
+    var last = i == len - 1;
+    buf.push(node);
+    if ('/' == nodes[i + 1] || '/' == node) return;
+    if (last) return;
+    buf.push(expr.isList
+      ? (self.compress ? ',' : ', ')
+      : (self.isURL ? '' : ' '));
+  });
+
+  return buf.join('');
+};
+
+/**
+ * Visit Arguments.
+ */
+
+Compiler.prototype.visitArguments = Compiler.prototype.visitExpression;
+
+/**
+ * Visit Property.
+ */
+
+Compiler.prototype.visitProperty = function(prop){
+  var self = this
+    , val = this.visit(prop.expr).trim();
+  return this.indent + (prop.name || prop.segments.join(''))
+    + (this.compress ? ':' + val : ': ' + val)
+    + (this.compress
+        ? (this.last ? '' : ';')
+        : ';');
+};
+
+/**
+ * Compile selector strings in `arr` from the bottom-up
+ * to produce the selector combinations. For example
+ * the following Stylus:
+ *
+ *    ul
+ *      li
+ *      p
+ *        a
+ *          color: red
+ *
+ * Would return:
+ *
+ *      [ 'ul li a', 'ul p a' ]
+ *
+ * @param {Array} arr
+ * @return {Array}
+ * @api private
+ */
+
+Compiler.prototype.compileSelectors = function(arr){
+  var stack = this.stack
+    , self = this
+    , selectors = []
+    , buf = [];
+
+  function compile(arr, i) {
+    if (i) {
+      arr[i].forEach(function(selector){
+        if (selector.inherits) {
+          buf.unshift(selector.val);
+          compile(arr, i - 1);
+          buf.shift();
+        } else {
+          selectors.push(selector.val);
+        }
+      });
+    } else {
+      arr[0].forEach(function(selector){
+        var str = selector.val.trim();
+        if (buf.length) {
+          for (var i = 0, len = buf.length; i < len; ++i) {
+            if (~buf[i].indexOf('&')) {
+              str = buf[i].replace(/&/g, str).trim();
+            } else {
+              str += ' ' + buf[i].trim();
+            }
+          }
+        }
+        selectors.push(self.indent + str.trimRight());
+      });
+    }
+  }
+
+  compile(arr, arr.length - 1);
+
+  return selectors;
+};
+
+/**
+ * Debug info.
+ */
+
+Compiler.prototype.debugInfo = function(node){
+
+  var path = fs.realpathSync(node.filename)
+    , line = node.nodes ? node.nodes[0].lineno : node.lineno;
+
+  if (this.linenos){
+    this.buf += '\n/* ' + 'line ' + line + ' : ' + path + ' */\n';
+  }
+
+  if (this.firebug){
+    // debug info for firebug, the crazy formatting is needed
+    path = 'file\\\:\\\/\\\/' + path.replace(/(\/|\.)/g, '\\$1');
+    line = '\\00003' + line;
+    this.buf += '\n@media -stylus-debug-info'
+      + '{filename{font-family:' + path
+      + '}line{font-family:' + line + '}}\n';
+  }
+}
+
+Compiler.prototype.visitRoot = function(block){
+    this.buf = '';
+    for (var i = 0, len = block.nodes.length; i < len; ++i) {
+        var node = block.nodes[i];
+        if (this.linenos || this.firebug) {
+            this.debugInfo(node);
+        }
+
+//        var ret = this.visit(node);
+//        if (ret) this.buf += ret + '\n';
+
+        switch (node.nodeName) {
+            case 'null':
+            case 'expression':
+            case 'function':
+            case 'jsliteral':
+            case 'unit':
+                continue;
+            default:
+                var ret = this.visit(node);
+                if (ret) this.buf += ret + '\n';
+        }
+    }
+    return this.buf;
+};
+});// module: visitor/compiler.js
+
+
+require.register("stylus.js", function(module, exports, require){
+
+
+/*!
+ * Stylus
+ * Copyright(c) 2010 LearnBoost <dev@learnboost.com>
+ * MIT Licensed
+ */
+
+/**
+ * Module dependencies.
+ */
+
+var Renderer = require('./renderer')
+  , Parser = require('./parser')
+  , nodes = require('./nodes')
+  , utils = require('./utils');
+
+/**
+ * Export render as the module.
+ */
+
+exports = module.exports = render;
+
+/**
+ * Library version.
+ */
+
+exports.version = '0.25.0';
+
+/**
+ * Expose nodes.
+ */
+
+exports.nodes = nodes;
+
+/**
+ * Expose BIFs.
+ */
+
+exports.functions = require('./functions');
+
+/**
+ * Expose utils.
+ */
+
+exports.utils = require('./utils');
+
+/**
+ * Expose middleware.
+ */
+
+exports.middleware = require('./middleware');
+
+/**
+ * Expose constructors.
+ */
+
+exports.Visitor = require('./visitor');
+exports.Parser = require('./parser');
+exports.Evaluator = require('./visitor/evaluator');
+exports.Compiler = require('./visitor/compiler');
+
+/**
+ * Convert the given `css` to `stylus` source.
+ *
+ * @param {String} css
+ * @return {String}
+ * @api public
+ */
+
+exports.convertCSS = require('./convert/css');
+
+/**
+ * Render the given `str` with `options` and callback `fn(err, css)`.
+ *
+ * @param {String} str
+ * @param {Object|Function} options
+ * @param {Function} fn
+ * @api public
+ */
+
+exports.render = function(str, options, fn){
+  if ('function' == typeof options) fn = options, options = {};
+  new Renderer(str, options).render(fn);
+};
+
+/**
+ * Return a new `Renderer` for the given `str` and `options`.
+ *
+ * @param {String} str
+ * @param {Object} options
+ * @return {Renderer}
+ * @api public
+ */
+
+function render(str, options) {
+  return new Renderer(str, options);
+}
+
+/**
+ * Expose optional functions.
+ */
+
+exports.url = require('./functions/url');
+
+function render(str, options) {
+    str = bifs + str;
+    return new Renderer(str, options);
+}
+});// module: stylus.js
+
+
+require.register("renderer.js", function(module, exports, require){
+
+
+/*!
+ * Stylus - Renderer
+ * Copyright(c) 2010 LearnBoost <dev@learnboost.com>
+ * MIT Licensed
+ */
+
+/**
+ * Module dependencies.
+ */
+
+var Parser = require('./parser')
+  , EventEmitter = require('events').EventEmitter
+  , Compiler = require('./visitor/compiler')
+  , Evaluator = require('./visitor/evaluator')
+  , Normalizer = require('./visitor/normalizer')
+  , utils = require('./utils')
+  , nodes = require('./nodes')
+  , path = require('path')
+  , join = path.join;
+
+/**
+ * Expose `Renderer`.
+ */
+
+module.exports = Renderer;
+
+/**
+ * Initialize a new `Renderer` with the given `str` and `options`.
+ *
+ * @param {String} str
+ * @param {Object} options
+ * @api public
+ */
+
+function Renderer(str, options) {
+  options = options || {};
+  options.globals = {};
+  options.functions = {};
+  options.imports = [join(__dirname, 'functions')];
+  options.paths = options.paths || [];
+  options.filename = options.filename || 'stylus';
+  this.options = options;
+  this.str = str;
+};
+
+/**
+ * Inherit from `EventEmitter.prototype`.
+ */
+
+Renderer.prototype.__proto__ = EventEmitter.prototype;
+
+/**
+ * Parse and evaluate AST, then callback `fn(err, css, js)`.
+ *
+ * @param {Function} fn
+ * @api public
+ */
+
+Renderer.prototype.render = function(fn){
+  var parser = this.parser = new Parser(this.str, this.options);
+  try {
+    nodes.filename = this.options.filename;
+    // parse
+    var ast = parser.parse();
+
+    // evaluate
+    this.evaluator = new Evaluator(ast, this.options);
+    ast = this.evaluator.evaluate();
+
+    // normalize
+    var normalizer = new Normalizer(ast, this.options);
+    ast = normalizer.normalize();
+
+    // compile
+    var compiler = new Compiler(ast, this.options)
+      , css = compiler.compile();
+
+    this.emit('end', css);
+    fn(null, css);
+  } catch (err) {
+    var options = {};
+    options.input = err.input || this.str;
+    options.filename = err.filename || this.options.filename;
+    options.lineno = err.lineno || parser.lexer.lineno;
+    fn(utils.formatException(err, options));
+  }
+};
+
+/**
+ * Set option `key` to `val`.
+ *
+ * @param {String} key
+ * @param {Mixed} val
+ * @return {Renderer} for chaining
+ * @api public
+ */
+
+Renderer.prototype.set = function(key, val){
+  this.options[key] = val;
+  return this;
+};
+
+/**
+ * Get option `key`.
+ *
+ * @param {String} key
+ * @return {Mixed} val
+ * @api public
+ */
+
+Renderer.prototype.get = function(key){
+  return this.options[key];
+};
+
+/**
+ * Include the given `path` to the lookup paths array.
+ *
+ * @param {String} path
+ * @return {Renderer} for chaining
+ * @api public
+ */
+
+Renderer.prototype.include = function(path){
+  this.options.paths.push(path);
+  return this;
+};
+
+/**
+ * Use the given `fn`.
+ *
+ * This allows for plugins to alter the renderer in
+ * any way they wish, exposing paths etc.
+ *
+ * @param {Function}
+ * @return {Renderer} for chaining
+ * @api public
+ */
+
+Renderer.prototype.use = function(fn){
+  fn.call(this, this);
+  return this;
+};
+
+/**
+ * Define function or global var with the given `name`. Optionally
+ * the function may accept full expressions, by setting `raw`
+ * to `true`.
+ *
+ * @param {String} name
+ * @param {Function|Node} fn
+ * @return {Renderer} for chaining
+ * @api public
+ */
+
+Renderer.prototype.define = function(name, fn, raw){
+  fn = utils.coerce(fn);
+
+  if (fn.nodeName) {
+    this.options.globals[name] = fn;
+    return this;
+  }
+
+  // function
+  this.options.functions[name] = fn;
+  if (undefined != raw) fn.raw = raw;
+  return this;
+};
+
+/**
+ * Import the given `file`.
+ *
+ * @param {String} file
+ * @return {Renderer} for chaining
+ * @api public
+ */
+
+Renderer.prototype.import = function(file){
+  this.options.imports.push(file);
+  return this;
+};
+
+
+
+function Renderer(str, options) {
+    options = options || {};
+    options.globals = {};
+    options.functions = {};
+    //options.imports = [join(__dirname, 'functions')];
+    options.imports = [];
+    options.paths = options.paths || [];
+    options.filename = options.filename || 'stylus';
+    this.options = options;
+    this.str = str;
+}
+
+});// module: renderer.js
 
 return require('stylus');
 })();

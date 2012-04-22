@@ -7214,10 +7214,13 @@ Renderer.prototype.render = function(fn){
   try {
     nodes.filename = this.options.filename;
     var ast = parser.parse();
-    console.log(ast);
 
     this.evaluator = new Evaluator(ast, this.options);
     ast = this.evaluator.evaluate();
+
+    //console.log(JSON.stringify2(ast, null, '  '));
+    console.log(JSON.stringify2(this.options));
+    debugger;
     var compiler = new Compiler(ast, this.options)
       , css = compiler.compile()
       , js = compiler.js;
@@ -8096,6 +8099,7 @@ Compiler.prototype.__proto__ = Visitor.prototype;
  */
 
 Compiler.prototype.compile = function(){
+    debugger;
   return this.visit(this.root);
 };
 
