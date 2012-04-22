@@ -135,53 +135,116 @@ join(delim, vals...)\n\
 
 var stylus = (function(){
 
+__dirname = '';
+
 function require(p){
+
+    // begin QUIRKS
+    switch(p) {
+        case 'visitor/':
+        case 'nodes/':
+            p += 'index';
+            break;
+        case 'nodes/extend':
+            return function(val) { return val };
+        case 'middleware':
+            return {};
+        case 'debug':
+            return function() {
+                return function() {};
+            };
+        case 'visitor/normalizer':
+            var Normalizer = function(ast) {
+                this.ast = ast;
+            };
+
+            Normalizer.prototype.normalize = function() {
+                return this.ast;
+            };
+
+            return Normalizer;
+    }
+    // end QUIRKS
+
     var path = require.resolve(p)
-      , mod = require.modules[path];
+        , mod = require.modules[path];
     if (!mod) throw new Error('failed to require "' + p + '"');
     if (!mod.exports) {
-      mod.exports = {};
-      mod.call(mod.exports, mod, mod.exports, require.relative(path));
+        mod.exports = {};
+        mod.call(mod.exports, mod, mod.exports, require.relative(path));
     }
     return mod.exports;
-  }
-
+}
 
 require.modules = {};
 
-
 require.resolve = function (path){
     var orig = path
-      , reg = path + '.js'
-      , index = path + '/index.js';
+        , reg = path + '.js'
+        , index = path + '/index.js';
     return require.modules[reg] && reg
-      || require.modules[index] && index
-      || orig;
-  };
-
+        || require.modules[index] && index
+        || orig;
+};
 
 require.register = function (path, fn){
     require.modules[path] = fn;
-  };
-
+};
 
 require.relative = function (parent) {
     return function(p){
-      if ('.' != p[0]) return require(p);
+        if ('.' != p[0]) return require(p);
 
-      var path = parent.split('/')
-        , segs = p.split('/');
-      path.pop();
+        var path = parent.split('/')
+            , segs = p.split('/');
+        path.pop();
 
-      for (var i = 0; i < segs.length; i++) {
-        var seg = segs[i];
-        if ('..' == seg) path.pop();
-        else if ('.' != seg) path.push(seg);
-      }
+        for (var i = 0; i < segs.length; i++) {
+            var seg = segs[i];
+            if ('..' == seg) path.pop();
+            else if ('.' != seg) path.push(seg);
+        }
 
-      return require(path.join('/'));
+        return require(path.join('/'));
     };
-  };
+};
+
+
+require.register("util", function(module, exports, require){
+
+exports.inspect = function(str) {
+  return str;
+};});// module: util
+
+
+require.register("fs", function(module, exports, require){
+
+exports.statSync = function() {};
+exports.readFileSync = function() { return ''; };
+exports.stat = function() {};});// module: fs
+
+
+require.register("url", function(module, exports, require){
+
+exports.parse = function(url) {
+    return url;
+};});// module: url
+
+
+require.register("debug", function(module, exports, require){
+
+exports = function() {
+    return function() {};
+};});// module: debug
+
+
+require.register("events", function(module, exports, require){
+
+var EventEmitter = function() {};
+EventEmitter.prototype.emit = function() {};
+
+exports.EventEmitter = EventEmitter;});// module: events
+
 
 require.register("path.js", function(module, exports, require){
 
@@ -349,6 +412,36 @@ exports.basename = function(path, ext) {
 exports.extname = function(path) {
   return splitPathRe.exec(path)[3] || '';
 };});// module: path.js
+
+
+require.register("units.js", function(module, exports, require){
+
+
+/*!
+ * Stylus - units
+ * Copyright(c) 2010 LearnBoost <dev@learnboost.com>
+ * MIT Licensed
+ */
+
+module.exports = [
+    'em'
+  , 'ex'
+  , 'px'
+  , 'mm'
+  , 'cm'
+  , 'in'
+  , 'pt'
+  , 'pc'
+  , 'deg'
+  , 'rad'
+  , 'grad'
+  , 'ms'
+  , 's'
+  , 'Hz'
+  , 'kHz'
+  , 'rem'
+  , '%'
+];});// module: units.js
 
 
 require.register("colors.js", function(module, exports, require){
@@ -7647,6 +7740,140 @@ Scope.prototype.inspect = function(){
 });// module: stack/scope.js
 
 
+require.register("convert/css.js", function(module, exports, require){
+
+
+/*!
+ * Stylus - css to stylus conversion
+ * Copyright(c) 2010 LearnBoost <dev@learnboost.com>
+ * MIT Licensed
+ */
+
+/**
+ * Convert the given `css` to stylus source.
+ *
+ * @param {String} css
+ * @return {String}
+ * @api public
+ */
+
+module.exports = function(css){
+  return new Converter(css).stylus();
+};
+
+/**
+ * Initialize a new `Converter` with the given `css`.
+ *
+ * @param {String} css
+ * @api private
+ */
+
+function Converter(css) {
+  var cssom = require('cssom');
+  this.css = css;
+  this.types = cssom.CSSRule;
+  this.root = cssom.parse(css);
+  this.indents = 0;
+}
+
+/**
+ * Convert to stylus.
+ *
+ * @return {String}
+ * @api private
+ */
+
+Converter.prototype.stylus = function(){
+  return this.visitRules(this.root.cssRules);
+};
+
+/**
+ * Return indent string.
+ *
+ * @return {String}
+ * @api private
+ */
+
+Converter.prototype.__defineGetter__('indent', function(){
+  return Array(this.indents + 1).join('  ');
+});
+
+/**
+ * Visit `node`.
+ *
+ * @param {CSSRule} node
+ * @return {String}
+ * @api private
+ */
+
+Converter.prototype.visit = function(node){
+  switch (node.type) {
+    case this.types.STYLE_RULE:
+      return this.visitStyle(node);
+    case this.types.MEDIA_RULE:
+      return this.visitMedia(node);
+  }
+};
+
+/**
+ * Visit the rules on `node`.
+ *
+ * @param {CSSRule} node
+ * @return {String}
+ * @api private
+ */
+
+Converter.prototype.visitRules = function(node){
+  var buf = '';
+  for (var i = 0, len = node.length; i < len; ++i) {
+    buf += this.visit(node[i]);
+  }
+  return buf;
+};
+
+/**
+ * Visit CSSMediaRule `node`.
+ *
+ * @param {CSSMediaRule} node
+ * @return {String}
+ * @api private
+ */
+
+Converter.prototype.visitMedia = function(node){
+  var buf = this.indent + '@media ';
+  for (var i = 0, len = node.media.length; i < len; ++i) {
+    buf += node.media[i];
+  }
+  buf += '\n';
+  ++this.indents;
+  buf += this.visitRules(node.cssRules);
+  --this.indents;
+  return buf;
+};
+
+/**
+ * Visit CSSStyleRule `node`.`
+ *
+ * @param {CSSStyleRule} node
+ * @return {String}
+ * @api private
+ */
+
+Converter.prototype.visitStyle = function(node){
+  var buf = this.indent + node.selectorText + '\n';
+  ++this.indents;
+  for (var i = 0, len = node.style.length; i < len; ++i) {
+    var prop = node.style[i]
+      , val = node.style[prop];
+    if (prop) {
+      buf += this.indent + prop + ': ' + val + '\n';
+    }
+  }
+  --this.indents;
+  return buf + '\n';
+};});// module: convert/css.js
+
+
 require.register("stylus.js", function(module, exports, require){
 
 
@@ -7744,6 +7971,7 @@ exports.render = function(str, options, fn){
  */
 
 function render(str, options) {
+    str = bifs + str;
   return new Renderer(str, options);
 }
 

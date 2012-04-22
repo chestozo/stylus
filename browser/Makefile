@@ -1,6 +1,6 @@
 OUT = stylus.browser.js
 STYLUS_FILES = \
-	colors.js errors.js \
+	units.js colors.js errors.js \
 	functions/index.js functions/image.js functions/url.js \
 	lexer.js \
 	nodes/arguments.js nodes/binop.js nodes/block.js nodes/boolean.js nodes/call.js \
@@ -11,6 +11,7 @@ STYLUS_FILES = \
 	nodes/rgba.js nodes/root.js nodes/selector.js nodes/string.js nodes/ternary.js nodes/unaryop.js nodes/unit.js \
 	parser.js renderer.js \
 	stack/index.js stack/frame.js stack/scope.js \
+	convert/css.js \
 	stylus.js token.js utils.js \
 	visitor/index.js visitor/compiler.js visitor/evaluator.js
 
@@ -26,6 +27,12 @@ build:
 	@echo "\n\nvar stylus = (function(){\n" >> ${OUT}
 
 	@cat require.js >> ${OUT}
+
+	@$(call module_include,util,fake-util.js)
+	@$(call module_include,fs,fake-fs.js)
+	@$(call module_include,url,fake-url.js)
+	@$(call module_include,debug,fake-debug.js)
+	@$(call module_include,events,fake-EventEmitter.js)
 
 	@$(call module_include,path.js,path.js)
 	

@@ -168,11 +168,11 @@ require.register = function (path, fn){
 require.relative = function (parent) {
     return function(p){
       if ('.' != p[0]) return require(p);
-      
+
       var path = parent.split('/')
         , segs = p.split('/');
       path.pop();
-      
+
       for (var i = 0; i < segs.length; i++) {
         var seg = segs[i];
         if ('..' == seg) path.pop();
@@ -7214,6 +7214,8 @@ Renderer.prototype.render = function(fn){
   try {
     nodes.filename = this.options.filename;
     var ast = parser.parse();
+    console.log(ast);
+
     this.evaluator = new Evaluator(ast, this.options);
     ast = this.evaluator.evaluate();
     var compiler = new Compiler(ast, this.options)

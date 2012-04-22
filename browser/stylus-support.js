@@ -138,9 +138,12 @@ var loadStyles = function() {
             .done(function(full_contents) {
 
                 // Get css from stylus code.
-                stylus(full_contents).render(function(err, css) {
+                var rend = stylus(full_contents);
+                rend.imports = []; // XXX
+
+                rend.render(function(err, css) {
                     if (err) {
-                        alert(arr);
+                        alert(err);
                         return;
                     }
 
